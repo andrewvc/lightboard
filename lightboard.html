@@ -69,7 +69,7 @@
     function Star (pos) {
       var self = this;
 
-      self.path = Path.Circle(pos, 1, 1);
+      self.path = Path.Circle(pos, (randInt(5) + 5) / 12);
       self.path.fillColor = 'white';
 
       var twinkleInterval = randInt(70000) + 1000;
@@ -103,7 +103,7 @@
     }
 
     var bladeManager = new BladeManager();
-    var starManager = new StarManager(view.bounds.width / 2);
+    var starManager = new StarManager(view.bounds.width / 1.5);
      
 		function onFrame (event) {
       bladeManager.onFrame(event);
