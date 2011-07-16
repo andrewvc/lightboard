@@ -18,6 +18,7 @@
                   (posBot.y - size) );
       this.path = new Path(posBot, posTop);
       this.path.strokeColor = color;
+      this.animSeed = Math.random() * 100;
 
       var curve = this.path.curves[0];
       var amountBent = 0;
@@ -25,6 +26,11 @@
       this.bendIter = function () {
         if ((bendBy > 0 && amountBent < bendiness) || (bendBy < 0 && amountBent > -bendiness)) {
           amountBent += bendBy;
+          if (Math.abs(bendBy) == 1 && Math.abs(amountBent) > Math.abs(bendiness) / 2) {
+            bendBy *= 0.5;
+          } else if (Math.abs(bendBy) == 0.5 && Math.abs(amountBent) < Math.abs(bendiness) / 2) {
+            bendBy *= 2;
+          }
         } else {
           bendBy *= -1;
         }
@@ -51,9 +57,9 @@
           self.blades.push(new Blade(posBot, size, color, bendiness));
         })
       };
-      self.onFrame = function () {
+      self.onFrame = function (event) {
         _.each(self.blades, function(blade) {
-          if (Math.random() > 0.1) {
+          if (blade.animSeed % 6 != event.time % 6) {
             blade.bendIter();
           }
         });
@@ -63,7 +69,7 @@
     function Star (pos) {
       var self = this;
 
-      self.path = Path.Circle(pos, 1, 1);
+      self.path = Path.Circle(pos, (randInt(5) + 5) / 12);
       self.path.fillColor = 'white';
 
       var twinkleInterval = randInt(70000) + 1000;
@@ -97,10 +103,10 @@
     }
 
     var bladeManager = new BladeManager();
-    var starManager = new StarManager(view.bounds.width / 2);
+    var starManager = new StarManager(view.bounds.width / 1.5);
      
 		function onFrame (event) {
-      bladeManager.onFrame();
+      bladeManager.onFrame(event);
 		}
 
     function onResize (event) {
