@@ -35,27 +35,27 @@
         } else {
           bendBy *= -1;
         }
-        curve.handle2 = new Point(curve.handle1.x + bendBy, curve.handle1.y);
+        curve.handle2 = new Point(curve.handle1.x + bendBy * 1.2, curve.handle1.y);
+
 
         // Move the top of the blade
-        posTop = new Point(posTop.x + bendBy / 8, posTop.y);
+        posTop = new Point(posTop.x + bendBy / 7, posTop.y);
         this.path.segments[1].point = posTop;
       };
     };
 
-    function BladeManager () {
+    function BladeManager (quantity,size) {
       var self = this;
       self.blades = [];
        
       self.onResize = function () {
         self.clear();
         
-        _.times(view.bounds.width * 0.8, function () {
+        _.times(quantity, function () {
           var posBot = new Point( (randInt(view.bounds.width)), view.bounds.bottom);
-          var size   = randInt(view.bounds.height / 8) + (view.bounds.height / 15);
           var color  = new HSBColor(randInt(300) + 10, 0.1, Math.random() / 16);
           var bendiness = randInt(10) + 10;
-          self.blades.push(new Blade(posBot, size, color, bendiness));
+          self.blades.push(new Blade(posBot, size(), color, bendiness));
         })
       };
 
@@ -93,11 +93,10 @@
       var self = this;
       self.stars = [];
 
-     var lowestY = view.bounds.height * 0.90;
-
-     self.onResize = function () {
+      self.onResize = function () {
         self.clear(); 
          
+        var lowestY = view.bounds.height * 0.90;
         _.times(starCount, function () {
           var yPos = lowestY - (Math.log(randInt(lowestY)) * (view.bounds.height / 10)) * 1.7;
           var pos = new Point(randInt(view.bounds.width), yPos);
@@ -116,13 +115,13 @@
        
       self.initialize = function () {
         self.gradient  = new Gradient([new GradientStop('#001212', 0.3), new GradientStop('#002555', 1)]);
-        self.gradColor = new GradientColor(self.gradient, view.bounds.topCenter, view.bounds.bottomCenter);
       }
       self.onResize = function () {
         self.clear();
          
+        var gradColor = new GradientColor(self.gradient, view.bounds.topCenter, view.bounds.bottomCenter);
         self.path = new Path.Rectangle(0,0, view.bounds.width, view.bounds.height);
-        self.path.fillColor = self.gradColor;
+        self.path.fillColor = gradColor;
       }
       self.clear = function () {
         if (self.path) {
@@ -173,7 +172,14 @@
 
     function initialize () {
       scene.add(new Sky);
-      scene.add(new BladeManager());
+      
+      var tallBladeSize = function () { return randInt(view.bounds.height / 8) + (view.bounds.height / 15) };
+      scene.add(new BladeManager(view.bounds.width * 0.8, tallBladeSize));
+
+      var shortBladeSize = function () { return randInt(view.bounds.height / 12) + (view.bounds.height / 20) };
+      scene.add(new BladeManager(view.bounds.width * 0.4, shortBladeSize));
+      
+       
       scene.add(new StarManager(view.bounds.width / 1.5));
       scene.initialize();
       scene.onResize();
