@@ -173,14 +173,14 @@
     function initialize () {
       scene.add(new Sky);
       
+      scene.add(new StarManager(view.bounds.width / 1.5));
+       
       var tallBladeSize = function () { return randInt(view.bounds.height / 8) + (view.bounds.height / 15) };
       scene.add(new BladeManager(view.bounds.width * 0.8, tallBladeSize));
 
       var shortBladeSize = function () { return randInt(view.bounds.height / 12) + (view.bounds.height / 20) };
       scene.add(new BladeManager(view.bounds.width * 0.4, shortBladeSize));
-      
        
-      scene.add(new StarManager(view.bounds.width / 1.5));
       scene.initialize();
       scene.onResize();
     }
