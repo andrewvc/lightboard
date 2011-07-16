@@ -37,14 +37,13 @@
         }
         curve.handle2 = new Point(curve.handle1.x + bendBy * 1.2, curve.handle1.y);
 
-
         // Move the top of the blade
         posTop = new Point(posTop.x + bendBy / 7, posTop.y);
         this.path.segments[1].point = posTop;
       };
     };
 
-    function BladeManager (quantity,size) {
+    function BladeManager (quantity,size,animate) {
       var self = this;
       self.blades = [];
        
@@ -64,49 +63,73 @@
         self.blades = [];
       };
        
-      self.onFrame = function (event) {
-        _.each(self.blades, function(blade) {
-            blade.onFrame();
-        });
-      };
+      if (animate) {
+        self.onFrame = function (event) {
+          _.each(self.blades, function(blade) {
+              blade.onFrame();
+          });
+        };
+      }
     };
 
-    function Star (pos) {
+    function Star (pos,raster) {
       var self = this;
-
-      self.path = Path.Circle(pos, (randInt(5) + 5) / 12);
-      self.path.fillColor = 'white';
-
-      var twinkleInterval  = randInt(70000) + 1000;
+       
+      var normalIntensity  = Math.random();
       var twinkleIntensity = Math.random();
+      raster.setPixel(pos.x,pos.y, normalIntensity);
 
-      setInterval(function () {
-        self.path.opacity = twinkleIntensity;
-        setTimeout(function() {
-          self.path.opacity = 1;
-        }, 25);
-      }, twinkleInterval);
-
+      self.twinkle = function () {
+        raster.setPixel(pos.x, pos.y, twinkleIntensity);
+      };
+      self.untwinkle = function () {
+        raster.setPixel(pos.x, pos.y, normalIntensity);
+      };
     }
 
     function StarManager (starCount) {
       var self = this;
       self.stars = [];
+      self.starFieldRaster = null;
+
+      self.twinkled = [];
 
       self.onResize = function () {
         self.clear(); 
+
+        var starField = Path.Rectangle(0,0, view.bounds.width, view.bounds.height);
+        fieldColor = new RGBColor(255,0,0);
+        fieldColor.alpha = 0;
+        starField.fillColor = fieldColor;
+        self.starFieldRaster = starField.rasterize();
          
         var lowestY = view.bounds.height * 0.90;
         _.times(starCount, function () {
-          var yPos = lowestY - (Math.log(randInt(lowestY)) * (view.bounds.height / 10)) * 1.7;
+          var yPos = lowestY - (Math.log(randInt(lowestY) + 1) * (view.bounds.height / 10)) * 1.7;
+
           var pos = new Point(randInt(view.bounds.width), yPos);
-          self.stars.push(new Star(pos));
+          self.stars.push(new Star(pos, self.starFieldRaster));
         });
       };
-       
+
       self.clear = function () {
-        _.each(self.stars, function (star) { star.path.remove() });
         self.stars = [];
+
+        if (self.starFieldRaster) {
+          self.starFieldRaster.remove();
+          self.starFieldRaster = null;
+        }
+      }
+
+      self.onFrame = function (event) {
+        if (event.count % (randInt(2)) === 0 ) {
+          _.times(5, function (i) {
+            var star = self.stars[randInt(self.stars.length - 1)];
+            self.twinkled.push(star);
+            star.twinkle();
+            setTimeout(function () {star.untwinkle()}, 100);
+          });
+        }
       }
     }
 
@@ -173,15 +196,15 @@
     function initialize () {
       scene.add(new Sky);
       
-      scene.add(new StarManager((view.bounds.width * view.bounds.height) / 100));
+      scene.add(new StarManager((view.bounds.width * view.bounds.height) / 200));
        
       var tallBladeSize     = function () { return randInt(view.bounds.height / 8) + (view.bounds.height / 15) };
       var tallBladeQuantity = function () { return view.bounds.width * 0.8 };
-      scene.add(new BladeManager(tallBladeQuantity, tallBladeSize));
+      scene.add(new BladeManager(tallBladeQuantity, tallBladeSize, true));
 
       var shortBladeSize     = function () { return randInt(view.bounds.height / 12) + (view.bounds.height / 20) };
-      var shortBladeQuantity = function () { return view.bounds.width * 0.4 };
-      scene.add(new BladeManager(shortBladeQuantity, shortBladeSize));
+      var shortBladeQuantity = function () { return view.bounds.width * 1.8 };
+      scene.add(new BladeManager(shortBladeQuantity, shortBladeSize, false));
        
       scene.initialize();
       scene.onResize();
@@ -196,7 +219,7 @@
     }
 
     initialize();
-	</script>
+  </script>
 </head>
 <body style='background-color:black'>
   <canvas id="canvas" resize keepalive="true"></canvas>
