@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-	<title>Example</title>
-	<link rel="stylesheet" href="style.css">
-	<script type="text/javascript" src="paper.js"></script>
-	<script type="text/javascript" src="underscore.js"></script>
-	<script type="text/paperscript" canvas="canvas">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>The Night Sky</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="text/javascript" src="paper.js"></script>
+  <script type="text/javascript" src="underscore.js"></script>
+  <script type="text/paperscript" canvas="canvas">
     function randInt(x) { 
       return Math.floor(Math.random()*(x+1))  
     }
-
      
     function Blade (posBot,size,color,bendiness) {
       var posTop = new Point(
@@ -23,9 +22,9 @@
       var curve = this.path.curves[0];
       var amountBent = 0;
       var bendBy     = 1;
-      this.bendIter = function () {
+       
+      this.onFrame = function () {
         if ((bendBy > 0 && amountBent < bendiness) || (bendBy < 0 && amountBent > -bendiness)) {
-           
           amountBent += bendBy * 2;
            
           if (Math.abs(bendBy) == 1 && Math.abs(amountBent) > Math.abs(bendiness) / 2) {
@@ -47,10 +46,10 @@
     function BladeManager () {
       var self = this;
       self.blades = [];
-      self.initialize = function () {
-        _.each(self.blades, function (blade) { blade.path.remove() });
-        self.blades = [];
-         
+       
+      self.onResize = function () {
+        self.clear();
+        
         _.times(view.bounds.width * 0.8, function () {
           var posBot = new Point( (randInt(view.bounds.width)), view.bounds.bottom);
           var size   = randInt(view.bounds.height / 8) + (view.bounds.height / 15);
@@ -59,9 +58,15 @@
           self.blades.push(new Blade(posBot, size, color, bendiness));
         })
       };
+
+      self.clear = function () {
+        _.each(self.blades, function (blade) { blade.path.remove() });
+        self.blades = [];
+      };
+       
       self.onFrame = function (event) {
         _.each(self.blades, function(blade) {
-            blade.bendIter();
+            blade.onFrame();
         });
       };
     };
@@ -72,10 +77,11 @@
       self.path = Path.Circle(pos, (randInt(5) + 5) / 12);
       self.path.fillColor = 'white';
 
-      var twinkleInterval = randInt(70000) + 1000;
+      var twinkleInterval  = randInt(70000) + 1000;
+      var twinkleIntensity = Math.random();
 
       setInterval(function () {
-        self.path.opacity = Math.random();
+        self.path.opacity = twinkleIntensity;
         setTimeout(function() {
           self.path.opacity = 1;
         }, 100);
@@ -86,44 +92,105 @@
     function StarManager (starCount) {
       var self = this;
       self.stars = [];
-      self.initialize = function() {
-        _.each(self.stars, function (star) { star.path.remove() });
-        self.stars = [];
+
+     var lowestY = view.bounds.height * 0.90;
+
+     self.onResize = function () {
+        self.clear(); 
          
         _.times(starCount, function () {
-          var lowestY = view.bounds.height * 0.90;
           var yPos = lowestY - (Math.log(randInt(lowestY)) * (view.bounds.height / 10)) * 1.7;
           var pos = new Point(randInt(view.bounds.width), yPos);
           self.stars.push(new Star(pos));
         });
       };
-      this.onFrame = function (event) {
-
-      };
+       
+      self.clear = function () {
+        _.each(self.stars, function (star) { star.path.remove() });
+        self.stars = [];
+      }
     }
 
-    var bladeManager = new BladeManager();
-    var starManager = new StarManager(view.bounds.width / 1.5);
+    function Sky () {
+      var self = this;
+       
+      self.initialize = function () {
+        self.gradient  = new Gradient([new GradientStop('#001212', 0.3), new GradientStop('#002555', 1)]);
+        self.gradColor = new GradientColor(self.gradient, view.bounds.topCenter, view.bounds.bottomCenter);
+      }
+      self.onResize = function () {
+        self.clear();
+         
+        self.path = new Path.Rectangle(0,0, view.bounds.width, view.bounds.height);
+        self.path.fillColor = self.gradColor;
+      }
+      self.clear = function () {
+        if (self.path) {
+          self.path.remove();
+        }
+      }
+    }
+
+    function Scene () {
+      var self = this;
+       
+      self.items = [];
+      self.resizables = [];
+      self.frameables = [];
+       
+      self.initialize = function () {
+        _.each(self.items, function (item) {
+          if (item.initialize) {
+            item.initialize()
+          };
+        });
+      };
+
+      self.add = function (item) {
+        self.items.push(item);
+        if (item.onResize) {
+          self.resizables.push(item);
+        }
+        if (item.onFrame) {
+          self.frameables.push(item);
+        }
+      };
+       
+      self.onResize = function (event) {
+        _.each(self.resizables, function (item) {
+          item.onResize(event); 
+        });
+      };
+
+      self.onFrame = function (event) {
+        _.each(self.frameables, function(item) {
+          item.onFrame(event);
+        });
+      }
+    }
+
+    scene = new Scene;
+
+    function initialize () {
+      scene.add(new Sky);
+      scene.add(new BladeManager());
+      scene.add(new StarManager(view.bounds.width / 1.5));
+      scene.initialize();
+      scene.onResize();
+    }
      
 		function onFrame (event) {
-      bladeManager.onFrame(event);
+      scene.onFrame(event);
 		}
 
     function onResize (event) {
-      var sky = new Path.Rectangle(0,0, view.bounds.width, view.bounds.height);
-      var skyGrad = new Gradient([new GradientStop('#001212', 0.3), new GradientStop('#002555', 1)]);
-      var skyGradColor = new GradientColor(skyGrad, view.bounds.topCenter, view.bounds.bottomCenter);
-      sky.fillColor = skyGradColor;
-       
-      starManager.initialize();
-
-      bladeManager.initialize();
+      scene.onResize(event);
     }
 
-    onResize();
+    initialize();
 	</script>
 </head>
 <body style='background-color:black'>
-    <canvas id="canvas" resize keepalive="true"></canvas>
+  <canvas id="canvas" resize keepalive="true"></canvas>
 </body>
 </html>
