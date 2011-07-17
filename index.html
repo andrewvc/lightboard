@@ -10,7 +10,37 @@
     function randInt(x) { 
       return Math.floor(Math.random()*(x+1))  
     }
-     
+
+    function Comet (origin, destination) {
+      var self = this;
+      var size = 4;
+      var oVector = destination - origin;
+       
+      self.onResize = function (event) {
+        self.group = new Group();
+
+        self.head = new Path.Circle(origin, size);
+        self.head.fillColor = 'white';
+         
+        var tailWidth = 10;
+        var tailLength = 20;
+        self.tail = new Path();
+        self.tail.add(origin);
+        self.tail.add([origin.x - tailWidth, origin.y - tailLength]);
+        self.tail.add([origin.x + tailWidth, origin.y - tailLength]);
+        self.tail.closePath();
+        self.tail.fillColor = 'white';
+        
+        self.group.addChild(self.tail);
+        self.group.addChild(self.head);
+        self.group.rotate(oVector.angle - 90);
+      };
+      self.onFrame = function (event) {
+        var cVector = destination - self.group.position;
+        self.group.position += (oVector / 10) - (cVector / 100);
+      };
+    }
+
     function Blade (posBot,size,color,bendiness) {
       var posTop = new Point(
                   (posBot.x + parseInt( (Math.random() * 5 - (Math.random() * 10)), 10)),
@@ -34,7 +64,7 @@
           }
         } else {
           bendBy *= -1;
-        }
+        };
         curve.handle2 = new Point(curve.handle1.x + bendBy * 1.2, curve.handle1.y);
 
         // Move the top of the blade
@@ -43,19 +73,29 @@
       };
     };
 
-    function BladeManager (quantity,size,animate) {
+    function BladeManager (quantity,clumpCount,size,animate) {
       var self = this;
       self.blades = [];
-       
+
       self.onResize = function () {
         self.clear();
+
+        self.clumpSpots = [];
+        self.clumpQuantity = quantity() / clumpCount;
+        _.times(clumpCount, function () { self.clumpSpots.push(randInt(view.bounds.width - 1)) });
+       
+       
+        _.each(self.clumpSpots, function (clumpSpot) {
+          _.times(self.clumpQuantity, function () {
+            var xBotPos = randInt(view.bounds.width - 1);
+             
+            var posBot = new Point( xBotPos, view.bounds.bottom);
+            var color  = new HSBColor(1, 0, 0.02);
+            var bendiness = randInt(10) + 10;
+            self.blades.push(new Blade(posBot, size(), color, bendiness));
+          });
+        });
         
-        _.times(quantity(), function () {
-          var posBot = new Point( (randInt(view.bounds.width)), view.bounds.bottom);
-          var color  = new HSBColor(randInt(300) + 10, 0.1, Math.random() / 16);
-          var bendiness = randInt(10) + 10;
-          self.blades.push(new Blade(posBot, size(), color, bendiness));
-        })
       };
 
       self.clear = function () {
@@ -65,8 +105,12 @@
        
       if (animate) {
         self.onFrame = function (event) {
+          var i = 0;
           _.each(self.blades, function(blade) {
-              blade.onFrame();
+            i ++;
+            if (i % 2 == 0) {
+              blade.onFrame(event);
+            }
           });
         };
       }
@@ -122,12 +166,13 @@
       }
 
       self.onFrame = function (event) {
-        if (event.count % (randInt(2)) === 0 ) {
+        return true; // animation is just too slow
+        if (event.count % (randInt(50)) === 0 ) {
           _.times(5, function (i) {
             var star = self.stars[randInt(self.stars.length - 1)];
-            self.twinkled.push(star);
+            //self.twinkled.push(star);
             star.twinkle();
-            setTimeout(function () {star.untwinkle()}, 100);
+            setTimeout(function () { star.untwinkle() }, 100);
           });
         }
       }
@@ -195,19 +240,22 @@
 
     function initialize () {
       scene.add(new Sky);
-      
       scene.add(new StarManager((view.bounds.width * view.bounds.height) / 200));
-       
-      var tallBladeSize     = function () { return randInt(view.bounds.height / 8) + (view.bounds.height / 15) };
-      var tallBladeQuantity = function () { return view.bounds.width * 0.8 };
-      scene.add(new BladeManager(tallBladeQuantity, tallBladeSize, true));
 
-      var shortBladeSize     = function () { return randInt(view.bounds.height / 12) + (view.bounds.height / 20) };
+      var shortBladeSize     = function () { return randInt(view.bounds.height / 54) + (view.bounds.height / 13) };
       var shortBladeQuantity = function () { return view.bounds.width * 1.8 };
-      scene.add(new BladeManager(shortBladeQuantity, shortBladeSize, false));
+      scene.add(new BladeManager(shortBladeQuantity, 9, shortBladeSize, false));
+       
+      var tallBladeSize     = function () { return randInt(view.bounds.height / 26) + (view.bounds.height / 15) };
+      var tallBladeQuantity = function () { return view.bounds.width * 0.2 };
+      scene.add(new BladeManager(tallBladeQuantity, 5, tallBladeSize, false));
+       
+      var comet = new Comet(new Point(100,100), new Point(200,250));
+      scene.add(comet);
        
       scene.initialize();
       scene.onResize();
+
     }
      
 		function onFrame (event) {
